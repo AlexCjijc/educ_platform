@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Тест: {{ test.title }}</h2>
+{% if test.time_limit_sec %}<p>Ограничение: {{ test.time_limit_sec }} сек.</p>{% endif %}
+<form method="post" action="{{ url_for('test_submit', test_id=test.id) }}">
+  {% for q in test.questions|sort(attribute='order_idx') %}
+  <div class="q">
+    <p><b>{{ loop.index }}.</b> {{ q.text }} ({{ q.points }} б.)</p>
+    {% if q.qtype == 'SINGLE' %}
+  {% for o in q.options %}
+    <label><input type="radio" name="q_{{ q.id }}" value="{{ o.id }}"/> {{ o.text }}</label><br/>
+  {% endfor %}
+{% elif q.qtype == 'MULTI' %}
+  {% for o in q.options %}
+    <label><input type="checkbox" name="q_{{ q.id }}" value="{{ o.id }}"/> {{ o.text }}</label><br/>
+  {% endfor %}
+{% elif q.qtype == 'ORDER' %}
+  <p>Введите порядок id вариантов через запятую (например: 3,1,2)</p>
+  <input name="q_{{ q.id }}" />
+  <ul>
+    {% for o in q.options %}
+      <li>#{{ o.id }} — {{ o.text }}</li>
+    {% endfor %}
+  </ul>
+{% elif q.qtype == 'MATCH' %}
+  <p>Соответствия «левая:правая», пары через запятую (например: <code>A:1,B:3,C:2</code>)</p>
+  <input name="q_{{ q.id }}" />
+{% elif q.qtype == 'TEXT' %}
+  <textarea name="q_{{ q.id }}" placeholder="Развёрнутый ответ"></textarea>
+{% endif %}
+
+  </div>
+  {% endfor %}
+  <button>Сдать</button>
+</form>
+{% endblock %}

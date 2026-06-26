@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Вход — Stepikish{% endblock %}
+
+{% block styles %}
+<style>
+  .container-narrow { max-width: 1100px; margin:0 auto; padding:0 16px; }
+  .auth-wrap { display:flex; justify-content:center; }
+  .auth-card {
+    background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+    padding:16px; width:100%; max-width:520px; margin:16px 0;
+  }
+  .auth-title { margin:0 0 10px; font-size:28px; color:#000; }
+  .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .form-label { font-weight:700; color:#000; }
+  .form-input {
+    width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #ccc; border-radius:8px;
+    font-size:14px; background:#fff; color:#333;
+  }
+  .btn { display:inline-block; padding:10px 16px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; cursor:pointer; text-align:center; }
+  .btn.secondary { background:#fff; color:#000; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .muted { color:#666; }
+  .small { font-size:90%; }
+  .flash-error, .flash { background:#fff5f5; border:1px solid #ffd6d6; color:#a40000; padding:10px; border-radius:8px; }
+
+  /* Mobile hardening */
+  * { min-width:0; }
+  html, body { overflow-x:hidden; }
+  @media (max-width: 360px){
+    .auth-title { font-size:22px; }
+    .btn, .btn.secondary { width:100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h2 class="auth-title">Войти</h2>
+
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="flash" style="margin-bottom:12px;">
+            {% for cat, msg in messages %}<div>{{ msg }}</div>{% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% if form and form.errors %}
+        <div class="flash-error" style="margin-bottom:12px;">
+          <b>Проверьте введённые данные:</b>
+          <ul style="margin:8px 0 0 18px;">
+            {% for field_name, errs in form.errors.items() %}
+              {% for e in errs %}<li>{{ e }}</li>{% endfor %}
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('login') }}" id="login-form">
+        {% if request.args.get('next') %}
+          <input type="hidden" name="next" value="{{ request.args.get('next') }}">
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" required
+                 value="{{ form.email.data or '' }}" class="form-input">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Пароль</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required class="form-input">
+        </div>
+
+        <div class="row" style="margin-top:8px;">
+          <button class="btn" type="submit">Войти</button>
+          <a class="btn secondary" href="{{ url_for('register') }}">Создать аккаунт</a>
+        </div>
+      </form>
+
+      <p class="small muted" style="margin-top:10px;">
+        Возникли проблемы со входом? Убедитесь, что вводите правильный email и пароль.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Защита от двойной отправки
+  (function(){
+    const form = document.getElementById('login-form');
+    let sending = false;
+    form.addEventListener('submit', () => {
+      if (sending) return false;
+      sending = true;
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Входим...'; }
+    });
+  })();
+</script>
+{% endblock %}

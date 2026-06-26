@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Настройки курса — {{ course.title }}{% endblock %}
+
+{% block styles %}
+<style>
+  .container-narrow { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  .settings-head {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin:16px 0;
+  }
+  .settings-title { margin:0; font-size:28px; color:#000; line-height:1.25; }
+  .head-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .muted { color:#666; }
+  .small { font-size:90%; }
+
+  /* Карточка формы */
+  .form-card {
+    background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+    padding:16px; display:grid; gap:12px;
+  }
+
+  /* Сетка формы: 2 колонки → 1 на мобильных */
+  .form-grid { display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; align-items:start; }
+  @media (max-width: 992px){ .form-grid { grid-template-columns: 1fr; } }
+
+  .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:6px; }
+  .form-label { font-weight:700; color:#000; }
+  .form-input, .form-textarea, .form-file, .form-select {
+    width:100%; box-sizing:border-box;
+    padding:10px 12px; border:1px solid #ccc; border-radius:8px;
+    font-size:14px; background:#fff; color:#333;
+  }
+  .form-textarea { min-height:140px; resize:vertical; }
+  .form-help { font-size:12px; color:#777; }
+
+  /* Две колонки внутри левой части */
+  .form-row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media (max-width: 768px){ .form-row { grid-template-columns: 1fr; } }
+
+  /* Обложка */
+  .cover-box { border:1px solid #eee; border-radius:10px; overflow:hidden; background:#fafafa; }
+  .cover-img { width:100%; height:240px; object-fit:cover; display:block; background:#f4f4f4; }
+  @media (max-width: 640px){ .cover-img { height:200px; } }
+  .cover-body { padding:12px; display:grid; gap:10px; }
+  .btn-file {
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+    border:1px dashed #999; padding:8px 12px; border-radius:8px; background:#fff;
+  }
+  .btn { display:inline-block; padding:10px 16px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; text-align:center; cursor:pointer; }
+  .btn.secondary { background:#fff; color:#000; }
+  .form-actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* Жёсткая адаптация для узких экранов (<=360px) */
+  @media (max-width: 360px) {
+    .settings-head { flex-direction:column; align-items:flex-start; }
+    .head-actions { width:100%; }
+    .head-actions .btn { width:100%; }
+    .form-actions .btn, .form-actions .link { width:100%; }
+    .form-textarea { min-height:120px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+
+  <div class="settings-head">
+    <h2 class="settings-title">Настройки курса</h2>
+    <div class="head-actions">
+      <a class="btn secondary" href="{{ url_for('course_edit', course_id=course.id) }}">К редактору контента</a>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="form-card" id="course-settings-form">
+
+    <div class="form-grid">
+
+
+      <div>
+        <div class="form-group">
+          <label class="form-label" for="title">Название</label>
+          <input id="title" name="title" class="form-input" value="{{ course.title }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="description">Описание</label>
+          <textarea id="description" name="description" class="form-textarea" required>{{ course.description }}</textarea>
+          <div class="form-help"><span id="desc-count">0</span>/4000</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="category">Категория</label>
+            <input id="category" name="category" class="form-input" value="{{ course.category or '' }}" placeholder="Напр.: Программирование">
+            <div class="form-help">Используется в подборках и поиске</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="visibility">Доступ</label>
+            <select id="visibility" name="visibility" class="form-select">
+              <option value="PUBLIC"  {{ 'selected' if course.visibility=='PUBLIC' }}>Публичный</option>
+              <option value="PRIVATE" {{ 'selected' if course.visibility=='PRIVATE' }}>Приватный</option>
+            </select>
+            <div class="form-help">Приватный — доступ по приглашению/токену</div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="max_students">Лимит участников (опц.)</label>
+            <input id="max_students" name="max_students" class="form-input" type="number" min="1" placeholder="Без ограничений" value="{{ course.max_students or '' }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="require_sequence">Последовательность</label>
+            <label style="display:flex; gap:8px; align-items:center;">
+              <input id="require_sequence" type="checkbox" name="require_sequence" {{ 'checked' if course.require_sequence }}>
+              Требовать прохождение по порядку
+            </label>
+          </div>
+        </div>
+      </div>
+
+
+      <div>
+        <div class="cover-box">
+          <img
+            id="cover-preview"
+            class="cover-img"
+            src="{% if course.image_path %}{{ url_for('static', filename=course.image_path) }}{% else %}{{ url_for('static', filename='images/course-placeholder.jpg') }}{% endif %}"
+            alt="Предпросмотр обложки">
+          <div class="cover-body">
+            <div class="form-group">
+              <label class="form-label" for="image">Обложка курса</label>
+              {% if course.image_path %}
+                <label class="small" style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                  <input type="checkbox" name="remove_image"> Удалить текущую обложку
+                </label>
+              {% endif %}
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <label class="btn-file">
+                  <input id="image" name="image" type="file" accept="image/*" style="display:none;">
+                  Выбрать файл
+                </label>
+                <button type="button" class="btn secondary" id="btn-reset-cover">Сбросить</button>
+              </div>
+              <div class="form-help" id="file-name" style="margin-top:4px;"></div>
+              <div class="form-help">Поддерживаются: png, jpg, jpeg, webp, gif</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="form-actions">
+      <button class="btn" type="submit">Сохранить</button>
+      <a class="btn secondary" href="{{ url_for('course_edit', course_id=course.id) }}">К редактору контента</a>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Счётчик символов описания
+  (function () {
+    const ta = document.getElementById('description');
+    const cnt = document.getElementById('desc-count');
+    const MAX = 4000;
+    function upd(){
+      const v = ta.value || '';
+      if (v.length > MAX) ta.value = v.slice(0, MAX);
+      cnt.textContent = ta.value.length;
+    }
+    ta.addEventListener('input', upd);
+    upd();
+  })();
+
+  // Предпросмотр обложки + сброс выбора файла
+  (function(){
+    const input = document.getElementById('image');
+    const preview = document.getElementById('cover-preview');
+    const fname = document.getElementById('file-name');
+    const resetBtn = document.getElementById('btn-reset-cover');
+    const placeholder = "{{ url_for('static', filename='images/course-placeholder.jpg') }}";
+    const hasCurrent = {{ 'true' if course.image_path else 'false' }};
+
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      if (!f) { fname.textContent=''; return; }
+      const url = URL.createObjectURL(f);
+      preview.src = url;
+      fname.textContent = `${f.name} (${Math.round(f.size/1024)} КБ)`;
+    });
+
+    resetBtn.addEventListener('click', () => {
+      input.value = '';
+      fname.textContent = '';
+      if (!hasCurrent) preview.src = placeholder;
+    });
+  })();
+
+  // Защита от двойной отправки
+  (function(){
+    const form = document.getElementById('course-settings-form');
+    let sending = false;
+    form.addEventListener('submit', () => {
+      if (sending) return false;
+      sending = true;
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Сохраняем...'; }
+    });
+  })();
+</script>
+{% endblock %}

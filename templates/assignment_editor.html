@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Редактор задания — {{ assignment.title }}{% endblock %}
+{% block content %}
+<h2>Редактор задания</h2>
+<p><a class="link" href="{{ url_for('course_edit', course_id=course_id) }}" target="_self">← Вернуться к курсу</a></p>
+
+<form method="post" class="card" style="max-width:900px; display:grid; gap:12px;">
+  <label>Заголовок</label>
+  <input name="title" value="{{ assignment.title }}" required>
+
+  <label>Описание</label>
+  <textarea name="description" rows="10">{{ assignment.description }}</textarea>
+
+  <div class="two" style="grid-template-columns:1fr 1fr;">
+    <div>
+      <label>Лимит времени (сек)</label>
+      <input type="number" name="time_limit_sec" value="{{ assignment.time_limit_sec or '' }}">
+    </div>
+    <div>
+      <label>Макс. попыток</label>
+      <input type="number" name="max_attempts" value="{{ assignment.max_attempts or '' }}">
+    </div>
+  </div>
+
+  <label><input type="checkbox" name="auto_grade" {{ 'checked' if assignment.auto_grade }}> Автоматическое оценивание</label>
+
+  <label>Политика оценивания (JSON)</label>
+  <textarea name="grading_policy_json" rows="6" placeholder='{"per_attempt_scale":{"1":1,"2":0.8}}'>{{ assignment.grading_policy_json or '' }}</textarea>
+
+  <div style="display:flex; gap:8px;">
+    <button class="btn" type="submit">Сохранить</button>
+    <button class="secondary" type="submit" name="close" value="1">Сохранить и закрыть</button>
+  </div>
+</form>
+{% endblock %}

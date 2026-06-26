@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Профиль — {{ u.name if u else 'Пользователь' }}{% endblock %}
+
+{% block styles %}
+<style>
+  /* Лэйаут профиля: 2 колонки → 1 колонка на мобильных */
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .profile-grid { grid-template-columns: 1fr; }
+  }
+
+  .card { background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); padding:16px; }
+
+  .card-profile {
+    background:#fff;
+    padding: 20px;
+    border-radius:12px;
+  }
+
+  .profile-header { display:flex; gap:12px; align-items:center; }
+  .profile-avatar {
+    width:88px; height:88px; border-radius:50%; object-fit:cover; border:1px solid #eee; background:#f4f4f4;
+  }
+  .profile-meta { margin-top:8px; }
+  .muted { color:#666; }
+  .small { font-size:90%; }
+
+  /* Сетка курсов в профиле */
+  .course-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; }
+  @media (max-width: 1024px){ .course-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .course-grid { grid-template-columns: 1fr; } }
+
+  .course-card { border:1px solid #eee; border-radius:12px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+  .course-card img { width:100%; height:160px; object-fit:cover; display:block; }
+  .course-body { padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .course-top { display:flex; align-items:center; justify-content:space-between; }
+  .pill { font-size:12px; padding:2px 6px; border:1px solid #ddd; border-radius:999px; background:#f6f6f6; color:#555; }
+  .rating { font-weight:600; }
+  .btn { display:inline-block; padding:8px 12px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; text-align:center; }
+  .btn.secondary { background:#fff; color:#000; }
+
+  /* Прогресс-бар */
+  .progress-wrap { margin:6px 0; }
+  .progress { height:10px; background:#eee; border-radius:6px; overflow:hidden; }
+  .progress > b { display:block; height:10px; background:#111; width:0%; }
+
+</style>
+{% endblock %}
+
+{% block content %}
+{% set created_list = created|default([]) %}
+{% set passed_list  = passed|default([]) %}
+
+<div class="container">
+  <div class="profile-grid">
+
+    <aside>
+      <div class="card-profile">
+        <div class="profile-header">
+          {% if u.avatar_path %}
+            <img src="{{ url_for('static', filename=u.avatar_path) }}" alt="{{ u.name }}" class="profile-avatar">
+          {% else %}
+            <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="{{ u.name }}" class="profile-avatar">
+          {% endif %}
+          <div>
+            <h2 style="margin:0;">{{ u.name }}</h2>
+
+
+            <p class="small muted" style="margin:4px 0;">ID: #{{ u.id }}</p>
+
+
+            {% if current_user.is_authenticated and current_user.id == u.id %}
+              <p class="small muted" style="margin:4px 0;">Email: {{ u.email }}</p>
+            {% endif %}
+
+            <p class="small muted" style="margin:4px 0;">
+              На платформе с: {{ u.created_at.strftime("%d.%m.%Y") if u.created_at }}
+            </p>
+          </div>
+        </div>
+
+        {% if u.bio %}
+          <div class="profile-meta">
+            <p style="margin-top:10px; white-space:pre-wrap;">{{ u.bio }}</p>
+          </div>
+        {% endif %}
+
+        {% if current_user.is_authenticated and current_user.id == u.id %}
+          <hr style="margin:12px 0; border:none; border-top:1px solid #eee;">
+          <a class="btn" href="{{ url_for('settings') }}">Настройки профиля</a>
+        {% endif %}
+      </div>
+    </aside>
+
+
+    <section>
+      <h3>Созданные курсы ({{ created_list|length }})</h3>
+      {% if created_list %}
+        <div class="course-grid">
+          {% for c in created_list %}
+            {% set img = c.image_path if c.image_path else 'images/course-placeholder.PNG' %}
+            <div class="course-card">
+              <a href="{{ url_for('course_detail', course_id=c.id) }}" style="text-decoration:none; color:inherit;">
+                <img src="{{ url_for('static', filename=img) }}" alt="Обложка курса">
+              </a>
+              <div class="course-body">
+                <div class="course-top">
+                  <span class="pill">{{ c.category or 'Без категории' }}</span>
+                  <span class="rating">✫ {{ "%.1f"|format(c.rating or 0.0) }}</span>
+                </div>
+                <h4 style="margin:0;">{{ c.title }}</h4>
+                <p style="margin:0; color:#555;">
+                  {{ (c.description or '')[:140] }}{% if c.description and c.description|length > 140 %}...{% endif %}
+                </p>
+                <div>
+                  <a class="btn" href="{{ url_for('course_detail', course_id=c.id) }}">Перейти</a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Пока нет созданных курсов.</p>
+        {% if current_user.is_authenticated and current_user.id == u.id %}
+          <p><a class="btn secondary" href="{{ url_for('course_new') }}">Создать курс</a></p>
+        {% endif %}
+      {% endif %}
+
+      <h3 style="margin-top:24px;">Пройденные/подписанные курсы ({{ passed_list|length }})</h3>
+      {% if passed_list %}
+        <div class="course-grid">
+          {% for e in passed_list %}
+            {% set c = e.course %}
+            {% set img = c.image_path if c.image_path else 'images/course-placeholder.PNG' %}
+            <div class="course-card">
+              <a href="{{ url_for('course_detail', course_id=c.id) }}" style="text-decoration:none; color:inherit;">
+                <img src="{{ url_for('static', filename=img) }}" alt="Обложка курса">
+              </a>
+              <div class="course-body">
+                <div class="course-top">
+                  <span class="pill">{{ c.category or 'Без категории' }}</span>
+                  <span class="rating">✫ {{ "%.1f"|format(c.rating or 0.0) }}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+                  <a href="{{ url_for('course_detail', course_id=c.id) }}" style="text-decoration:none; color:inherit;">
+                    <h4 style="margin:0;">{{ c.title }}</h4>
+                  </a>
+                  {% if current_user.is_authenticated and current_user.id == u.id %}
+                    <form method="post" action="{{ url_for('course_leave', course_id=c.id) }}" style="margin:0;">
+                      <button class="btn secondary" title="Отказаться">Удалить</button>
+                    </form>
+                  {% endif %}
+                </div>
+                <p style="margin:0; color:#555;">
+                  {{ (c.description or '')[:120] }}{% if c.description and c.description|length > 120 %}...{% endif %}
+                </p>
+
+                <div class="progress-wrap">
+                  <small>Прогресс: {{ (e.progress_pct or 0)|round(0) }}%</small>
+                  <div class="progress">
+                    <b style="width: {{ e.progress_pct or 0 }}%;"></b>
+                  </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <small>Качество: {{ "%.1f"|format(e.quality_score or 0.0) }}</small>
+                  <a class="btn" href="{{ url_for('course_learn', course_id=c.id) }}">Перейти</a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p>Пока нет подписок на курсы.</p>
+        {% if current_user.is_authenticated and current_user.id == u.id %}
+          <p><a class="btn secondary" href="{{ url_for('catalog') }}">Найти курсы</a></p>
+        {% endif %}
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

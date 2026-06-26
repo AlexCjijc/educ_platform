@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block title %}Приглашение — {{ (invite.course.title if invite and invite.course) or 'Курс' }}{% endblock %}
+
+{% block styles %}
+<style>
+  .container-narrow { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  /* Герой */
+  .detail-hero {
+    background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06);
+    padding:16px; margin:16px 0 20px;
+  }
+  .hero-grid {
+    display:grid; grid-template-columns: 1.2fr .8fr; gap:16px; align-items:start;
+  }
+  @media (max-width: 992px){ .hero-grid { grid-template-columns: 1fr; } }
+
+  .hero-title { margin:0; font-size:28px; color:#000; line-height:1.25; }
+  .hero-meta { display:flex; flex-wrap:wrap; gap:10px 12px; align-items:center; margin:8px 0 6px; }
+  .pill { font-size:12px; padding:4px 8px; border:1px solid #ddd; border-radius:999px; background:#f6f6f6; color:#555; }
+  .chip { font-size:12px; padding:4px 8px; border:1px solid #eee; border-radius:999px; background:#fff; color:#333; }
+  .rating { font-weight:700; }
+  .muted { color:#666; }
+  .small { font-size:90%; }
+
+  .hero-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  .btn { display:inline-block; padding:10px 16px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; text-align:center; cursor:pointer; }
+  .btn.secondary { background:#fff; color:#000; }
+  .inline-form { margin:0; }
+
+  .cover-box { border:1px solid #eee; border-radius:10px; overflow:hidden; background:#fafafa; }
+  .cover-img { width:100%; height:280px; object-fit:cover; display:block; background:#f4f4f4; }
+  @media (max-width: 640px){ .cover-img { height:220px; } }
+
+  /* Низ */
+  .detail-body { display:grid; grid-template-columns: 1fr; gap:16px; }
+  .card { background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); padding:16px; }
+  .card h3 { margin:0 0 10px; }
+
+  /* Отзывы */
+  .reviews { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  @media (max-width: 900px){ .reviews { grid-template-columns: 1fr; } }
+  .review-item { border:1px solid #eee; border-radius:10px; padding:12px; background:#fff; }
+
+  /* Структура курса */
+  .structure { display:grid; gap:10px; }
+  .chapter { border:1px solid #eee; border-radius:10px; background:#fff; overflow:hidden; }
+  .chapter summary {
+    list-style:none; cursor:pointer; padding:10px 12px; font-weight:700; display:flex; align-items:center; justify-content:space-between;
+    background:#fafafa; border-bottom:1px solid #eee;
+  }
+  .chapter summary::-webkit-details-marker { display:none; }
+  .chapter-title { display:flex; align-items:center; gap:8px; }
+  .chapter-body { padding:10px 12px 12px; }
+
+  .unit-list { list-style:none; margin:8px 0; padding:0; display:grid; gap:6px; }
+  .unit { display:flex; align-items:center; gap:8px; }
+  .unit a { text-decoration:none; color:#006; }
+  .unit .lock { color:#999; }
+
+  .section-box { border:1px dashed #ddd; border-radius:8px; padding:8px; margin-top:8px; background:#fcfcfc; }
+  .section-title { font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+
+  .badge { display:inline-block; font-size:11px; padding:2px 6px; border:1px solid #ddd; border-radius:999px; background:#fff; color:#444; }
+
+  /* Карточка приглашения */
+  .invite-info { display:grid; gap:10px; }
+  .invite-list { list-style:none; padding-left:16px; margin:8px 0 0; color:#555; }
+  .invite-list li { margin:4px 0; }
+
+  /* Mobile hardening */
+  * { min-width:0; }
+  html, body { overflow-x:hidden; }
+  img { max-width:100%; height:auto; display:block; }
+  @media (max-width: 360px) {
+    .hero-title { font-size:22px; }
+    .btn, .btn.secondary { width:100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set course = invite.course if invite and invite.course else None %}
+
+<div class="container-narrow">
+
+
+  <section class="detail-hero">
+    <div class="hero-grid">
+
+      <div>
+        <h1 class="hero-title">{{ course.title if course else 'Курс #' ~ invite.course_id }}</h1>
+
+        <div class="hero-meta">
+          {% if course and course.category %}<span class="pill">Категория: {{ course.category }}</span>{% endif %}
+          {% if course %}
+            <span class="chip rating">✫ {{ "%.1f"|format(course.rating or 0.0) }} ({{ course.reviews_count or 0 }})</span>
+            <span class="chip">
+              Автор:
+              {% if course.creator %}
+                <a href="{{ url_for('profile', user_id=course.creator_id) }}">{{ course.creator.name }}</a>
+              {% else %}
+                <a href="{{ url_for('profile', user_id=course.creator_id) }}">Профиль #{{ course.creator_id }}</a>
+              {% endif %}
+            </span>
+            {% if course.access_start or course.access_end %}
+              <span class="chip">Доступ: {{ course.access_start or "сейчас" }} — {{ course.access_end or "без ограничений" }}</span>
+            {% endif %}
+            <span class="pill">{{ 'Приватный' if course.visibility=='PRIVATE' else 'Публичный' }}</span>
+          {% endif %}
+        </div>
+
+        {% if course %}
+          <p class="muted" style="margin-top:8px;">{{ course.description }}</p>
+        {% endif %}
+
+
+        <div class="card" style="margin-top:10px;">
+          <h3>Приглашение в курс</h3>
+          <div class="invite-info">
+            <div>
+              Курс:
+              <a href="{{ url_for('course_detail', course_id=invite.course_id) }}">
+                {{ course.title if course else invite.course_id }}
+              </a>
+            </div>
+            <div>Роль по приглашению: <b>{{ invite.role }}</b></div>
+
+            {% if expired %}
+              <p class="muted">Срок действия приглашения истёк.</p>
+            {% elif limit_reached %}
+              <p class="muted">Лимит использований приглашения исчерпан.</p>
+            {% else %}
+              {% if current_user.is_authenticated %}
+                <form method="post" action="{{ url_for('invite_accept', token=invite.token) }}" class="inline-form">
+                  <button class="btn" type="submit">Принять приглашение</button>
+                </form>
+              {% else %}
+                <p>Войдите, чтобы принять приглашение.</p>
+                <p>
+                  <a class="btn" href="{{ url_for('login') }}?next={{ url_for('invite_page', token=invite.token) }}">Войти</a>
+                </p>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+
+
+        <div class="hero-actions" style="margin-top:8px;">
+          <a class="btn secondary" href="{{ url_for('course_detail', course_id=invite.course_id) }}">Открыть страницу курса</a>
+        </div>
+      </div>
+
+      <div>
+        <div class="cover-box">
+          <img class="cover-img"
+               src="{% if course and course.image_path %}{{ url_for('static', filename=course.image_path) }}{% else %}{{ url_for('static', filename='images/course-placeholder.jpg') }}{% endif %}"
+               alt="Обложка курса {{ course.title if course else invite.course_id }}">
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+
+  <section class="detail-body">
+
+    {% if course %}
+
+      <div class="card-course">
+        <h3>Структура курса</h3>
+        <div class="structure">
+          {% set is_auth = current_user.is_authenticated %}
+          {% for ch in course.chapters|sort(attribute='order_idx') %}
+            <details class="chapter" {% if loop.first %}open{% endif %}>
+              <summary>
+                <span class="chapter-title">
+                  <span class="badge">Глава {{ loop.index }}</span> {{ ch.title }}
+                </span>
+                <span class="small muted">развернуть</span>
+              </summary>
+              <div class="chapter-body">
+
+                {# Уроки уровня главы #}
+                {% set chapter_lessons = ch.lessons|sort(attribute='order_idx') %}
+                {% if chapter_lessons %}
+                  <div class="small muted">Уроки</div>
+                  <ul class="unit-list">
+                    {% for l in chapter_lessons %}
+                      <li class="unit">
+                        <span class="badge">Урок</span>
+                        {% if is_auth %}
+                          <span>{{ l.title }}</span>
+                        {% else %}
+                          <span class="lock">🔒 {{ l.title }}</span>
+                        {% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {# Тесты уровня главы (без section_id) #}
+                {% set chapter_tests = ch.tests|selectattr('section_id','equalto', None)|list|sort(attribute='order_idx') %}
+                {% if chapter_tests %}
+                  <div class="small muted">Тесты</div>
+                  <ul class="unit-list">
+                    {% for t in chapter_tests %}
+                      <li class="unit">
+                        <span class="badge">Тест</span>
+                        {% if is_auth %}<span>{{ t.title }}</span>{% else %}<span class="lock">🔒 {{ t.title }}</span>{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {# Задания уровня главы (без section_id) #}
+                {% set chapter_assigns = ch.assignments|selectattr('section_id','equalto', None)|list|sort(attribute='order_idx') %}
+                {% if chapter_assigns %}
+                  <div class="small muted">Задания</div>
+                  <ul class="unit-list">
+                    {% for a in chapter_assigns %}
+                      <li class="unit">
+                        <span class="badge">Задание</span>
+                        {% if is_auth %}<span>{{ a.title }}</span>{% else %}<span class="lock">🔒 {{ a.title }}</span>{% endif %}
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+
+                {# Подглавы и их содержимое #}
+                {% for s in ch.sections|sort(attribute='order_idx') %}
+                  <div class="section-box">
+                    <div class="section-title">
+                      <span class="badge">Подглава</span> {{ s.title }}
+                    </div>
+
+                    {# Уроки подглавы #}
+                    {% set sect_lessons = s.lessons|sort(attribute='order_idx') %}
+                    {% if sect_lessons %}
+                      <ul class="unit-list">
+                        {% for l in sect_lessons %}
+                          <li class="unit">
+                            <span class="badge">Урок</span>
+                            {% if is_auth %}<span>{{ l.title }}</span>{% else %}<span class="lock">🔒 {{ l.title }}</span>{% endif %}
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+
+                    {# Тесты подглавы #}
+                    {% set sect_tests = ch.tests|selectattr('section_id','equalto', s.id)|list|sort(attribute='order_idx') %}
+                    {% if sect_tests %}
+                      <div class="small muted" style="margin-top:6px;">Тесты</div>
+                      <ul class="unit-list">
+                        {% for t in sect_tests %}
+                          <li class="unit">
+                            <span class="badge">Тест</span>
+                            {% if is_auth %}<span>{{ t.title }}</span>{% else %}<span class="lock">🔒 {{ t.title }}</span>{% endif %}
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+
+                    {# Задания подглавы #}
+                    {% set sect_assigns = ch.assignments|selectattr('section_id','equalto', s.id)|list|sort(attribute='order_idx') %}
+                    {% if sect_assigns %}
+                      <div class="small muted" style="margin-top:6px;">Задания</div>
+                      <ul class="unit-list">
+                        {% for a in sect_assigns %}
+                          <li class="unit">
+                            <span class="badge">Задание</span>
+                            {% if is_auth %}<span>{{ a.title }}</span>{% else %}<span class="lock">🔒 {{ a.title }}</span>{% endif %}
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    {% endif %}
+                  </div>
+                {% endfor %}
+
+                {% if not chapter_lessons and not chapter_tests and not chapter_assigns and (ch.sections|length == 0) %}
+                  <p class="small muted">Эта глава пока пустая.</p>
+                {% endif %}
+
+              </div>
+            </details>
+          {% else %}
+            <p class="muted">Структура пока не добавлена.</p>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+
+      <div class="card">
+        <h3>Отзывы</h3>
+        {% if reviews %}
+          <div class="reviews">
+            {% for r in reviews %}
+              <div class="review-item">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>Оценка: {{ r.rating }}/5</strong>
+                  <span class="small muted">{{ r.created_at.strftime("%d.%m.%Y") if r.created_at }}</span>
+                </div>
+                <p style="margin:8px 0 0; color:#444;">{{ r.text or "без комментария" }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="muted">Пока нет отзывов.</p>
+        {% endif %}
+      </div>
+
+  </section>
+
+</div>
+{% endblock %}

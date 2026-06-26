@@ -1,0 +1,19 @@
+body { font-family: system-ui, Arial, sans-serif; margin:0; color:#222; }
+.topbar { display:flex; gap:16px; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #eee; }
+.logo { font-weight:700; text-decoration:none; color:#222; }
+.container { max-width:2000px; margin:0 auto; padding:60px; }
+.grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; }
+.card { display:block; padding:12px; border:1px solid #eee; border-radius:8px; text-decoration:none; color:inherit; background:#fff; }
+.btn { padding:8px 12px; background:#111; color:#fff; border-radius:8px; text-decoration:none; }
+.footer { border-top:1px solid #eee; padding:16px; text-align:center; color:#666; }
+.two { display:grid; grid-template-columns: 320px 1fr; gap:24px; }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0; }
+.box { border:1px dashed #ccc; padding:8px; border-radius:8px; margin:8px 0; }
+.flash > div { margin:8px 0; padding:8px; border-radius:6px; }
+.flash-success { background:#e8fff0; border:1px solid #b2f0c0; }
+.flash-error { background:#ffecec; border:1px solid #ffb3b3; }
+.dropdown { position:relative; display:inline-block; }
+.dropdown .menu { position:absolute; display:none; background:#fff; border:1px solid #eee; padding:8px; border-radius:8px; }
+.dropdown:hover .menu { display:block; }
+.link { background:none; border:none; color:#06c; cursor:pointer; text-decoration:underline; padding:0; }
+.secondary { background:#f5f5f5; border:1px solid #ddd; }

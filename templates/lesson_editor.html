@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% block title %}Редактор урока — {{ lesson.title }}{% endblock %}
+
+{% block styles %}
+<style>
+  .container-narrow { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+
+  .editor-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+  .editor-title { margin:0; font-size:28px; color:#000; line-height:1.25; }
+  .head-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+  .card { background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); padding:16px; }
+  .muted { color:#666; } .small { font-size:90%; }
+
+  /* Поля формы */
+  .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:8px; }
+  .form-label { font-weight:700; color:#000; }
+  .form-input, .form-text, .form-select {
+    width:100%; box-sizing:border-box;
+    padding:10px 12px; border:1px solid #ccc; border-radius:8px; font-size:14px; background:#fff; color:#333;
+  }
+
+  /* Кнопки */
+  .btn { display:inline-block; padding:10px 16px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; cursor:pointer; text-align:center; }
+  .btn.secondary { background:#fff; color:#000; }
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+  /* Сетка редактора: слева редактор, справа сайдбар, между ними сплиттер */
+  .editor-grid {
+    --runner-w: 520px;
+    display:grid; grid-template-columns: 1fr; gap: 10px; align-items: stretch;
+  }
+  .editor-grid.two { grid-template-columns: 1fr 6px var(--runner-w); }
+
+  .splitter {
+    width:6px; cursor:col-resize; background:linear-gradient(90deg, transparent, #eee, transparent);
+    border-radius: 4px; align-self: stretch; min-height: 240px;
+  }
+
+  .runner-col {
+    position:sticky; top:8px; height: calc(100vh - 220px); overflow:auto; display:none;
+  }
+  .editor-grid.two .runner-col { display:block; }
+  .runner-col iframe {
+    width:100%; height:100%; border:2px solid #ccc; border-radius:8px; background:#fff;
+    min-width:900px; min-height:600px; /* чтобы внутри был скролл при сужении контейнера */
+  }
+
+  /* Quill */
+  #quill .ql-editor { min-height: 420px; background:#fff; }
+  #quill .ql-editor img { max-width:100%; height:auto; }
+  #quill .ql-editor iframe.ql-video { max-width:100%; }
+
+  /* Mobile hardening */
+  * { min-width:0; }
+  img { max-width:100%; height:auto; display:block; }
+  html, body { overflow-x:hidden; }
+
+  @media (max-width: 992px) {
+    .editor-head { flex-direction:column; align-items:flex-start; }
+    .head-actions .btn { width:100%; }
+  }
+  @media (max-width: 900px) {
+    .editor-grid { grid-template-columns: 1fr !important; }
+    .splitter { display:none; }
+    .runner-col { position:relative; top:auto; height: 50vh; }
+  }
+  @media (max-width: 360px) {
+    .editor-title { font-size:22px; }
+    .btn, .btn.secondary { width:100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+
+  <div class="editor-head">
+    <h2 class="editor-title">Редактор урока</h2>
+    <div class="head-actions">
+      <a class="btn secondary" href="{{ url_for('course_edit', course_id=course_id) }}">← Вернуться к курсу</a>
+    </div>
+  </div>
+
+  <form id="lesson-form" method="post" action="{{ url_for('lesson_editor', lesson_id=lesson.id) }}" class="">
+
+
+    <div class="form-group">
+      <label class="form-label" for="title">Заголовок</label>
+      <input id="title" name="title" class="form-input" value="{{ lesson.title }}" required>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <div class="form-group">
+        <label class="form-label" for="video_url">Видео (YouTube/RuTube URL)</label>
+        <input id="video_url" name="video_url" class="form-input" value="{{ lesson.video_url or '' }}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="external_files">Внешние файлы (ссылки через запятую)</label>
+        <input id="external_files" name="external_files" class="form-input" value="{{ lesson.external_files or '' }}">
+      </div>
+    </div>
+
+
+    <fieldset style="border:1px solid #eee; padding:10px; border-radius:8px;">
+      <legend style="padding:0 6px;">Редактор кода (сайдбар)</legend>
+      <label style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" name="code_panel_enabled" id="code_panel_enabled" {{ 'checked' if lesson.code_panel_enabled }}>
+        Включить сайдбар с онлайн-компилятором
+      </label>
+      <select name="code_language" id="code_language" class="form-select" style="margin-top:6px; max-width:260px;">
+        <option value="" {{ 'selected' if not lesson.code_language }}>— язык —</option>
+        <option value="python" {{ 'selected' if lesson.code_language=='python' }}>Python</option>
+        <option value="java" {{ 'selected' if lesson.code_language=='java' }}>Java</option>
+        <option value="c" {{ 'selected' if lesson.code_language=='c' }}>C</option>
+        <option value="cpp" {{ 'selected' if lesson.code_language=='cpp' }}>C++</option>
+        <option value="csharp" {{ 'selected' if lesson.code_language=='csharp' }}>C#</option>
+      </select>
+      <small class="small muted" style="display:block; margin-top:6px;">
+        Панель справа (на мобильных — ниже). Тяните вертикальный разделитель для изменения ширины. Если JDoodle не грузится в iframe — откройте в новой вкладке.
+      </small>
+    </fieldset>
+
+
+    <div class="btn-row" style="margin:6px 0 8px;">
+      <button type="button" class="btn" id="btn-save">Сохранить</button>
+      <button type="button" class="btn secondary" id="btn-save-close">Сохранить и закрыть</button>
+    </div>
+
+
+    <div id="editor-grid" class="editor-grid">
+      <div class="editor-col">
+        <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+        <div id="quill"></div>
+        <input type="hidden" name="html_content" id="html_content">
+      </div>
+
+      <div class="splitter" id="grid-splitter" aria-label="Перетяните, чтобы изменить ширину панели"></div>
+
+      <aside class="runner-col" id="runner-col">
+        <div style="margin-bottom:8px;">
+          <a id="runner-open" class="link" href="#" target="_blank" rel="noopener">Открыть компилятор в новой вкладке</a>
+        </div>
+        <iframe id="runner-iframe" src="about:blank" title="Online Compiler"></iframe>
+      </aside>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<script>
+  // Quill init
+  const quill = new Quill('#quill', {
+    theme: 'snow',
+    modules: { toolbar: [
+      [{ 'font': [] }, { 'size': [] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'align': [] }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'list': 'check' }],
+      ['blockquote', 'code-block'],
+      ['link', 'image', 'video'],
+      ['clean']
+    ]},
+    placeholder: 'Напишите контент урока...'
+  });
+
+  // Подгрузка сохранённого HTML
+  const editorRoot = document.querySelector('#quill .ql-editor');
+  const initialHtml = {{ (lesson.html_content or '')|tojson|safe }};
+  if (initialHtml) editorRoot.innerHTML = initialHtml;
+
+  // Превращаем YouTube/RuTube ссылки в плееры
+  function toVideoEmbed(url) {
+    if (!url) return null;
+    try {
+      const u = new URL(url.trim());
+      const host = (u.hostname || '').toLowerCase();
+      if (host.includes('youtube.com') || host.includes('youtu.be')) {
+        if (u.hostname.includes('youtube.com') && u.pathname.startsWith('/embed/')) return u.toString();
+        if (host.includes('youtube.com')) {
+          if (u.pathname.startsWith('/shorts/')) { const id = u.pathname.split('/')[2] || ''; if (id) return `https://www.youtube.com/embed/${id}`; }
+          const v = u.searchParams.get('v'); if (v) return `https://www.youtube.com/embed/${v}`;
+        }
+        if (host.includes('youtu.be')) { const id = u.pathname.replace(/^\/+/, '').split('/')[0]; if (id) return `https://www.youtube.com/embed/${id}`; }
+      }
+      if (host.includes('rutube.ru')) {
+        if (u.pathname.includes('/play/embed/')) return u.toString();
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2 && parts[0] === 'video') return `https://rutube.ru/play/embed/${parts[1]}`;
+      }
+    } catch(e) {}
+    return null;
+  }
+  function convertAnchorsToEmbeds(root) {
+    root.querySelectorAll('a[href]').forEach(a=>{
+      const emb = toVideoEmbed(a.href);
+      if (emb) {
+        const ifr=document.createElement('iframe');
+        ifr.className='ql-video';
+        ifr.src=emb; ifr.setAttribute('frameborder','0'); ifr.setAttribute('allowfullscreen','');
+        a.replaceWith(ifr);
+      }
+    });
+  }
+  convertAnchorsToEmbeds(editorRoot);
+
+  // Тулбар «Видео»
+  quill.getModule('toolbar').addHandler('video', () => {
+    const url = window.prompt('Вставьте ссылку на видео (YouTube или RuTube):');
+    if (!url) return;
+    const emb = toVideoEmbed(url);
+    const range = quill.getSelection(true);
+    if (emb) { quill.insertEmbed(range.index, 'video', emb, Quill.sources.USER); quill.setSelection(range.index + 1, Quill.sources.SILENT); }
+    else { quill.insertText(range.index, url, { link: url }, Quill.sources.USER); quill.setSelection(range.index + url.length, Quill.sources.SILENT); }
+  });
+
+  // Автоконвертация ссылок при вставке/наборе
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  if (window.Node && Node.TEXT_NODE) {
+    quill.clipboard.addMatcher(Node.TEXT_NODE, function(node, delta) {
+      const ops=[]; (delta.ops||[]).forEach(op=>{
+        if (typeof op.insert!=='string'){ ops.push(op); return; }
+        let str=op.insert, last=0, m;
+        while((m=urlRegex.exec(str))!==null){
+          const url=m[0], before=str.slice(last, m.index); if (before) ops.push({insert:before});
+          const emb=toVideoEmbed(url); ops.push(emb?{insert:{video:emb}}:{insert:url, attributes:{link:url}});
+          last=m.index+url.length;
+        }
+        const after=str.slice(last); if(after) ops.push({insert:after});
+      });
+      delta.ops=ops; return delta;
+    });
+  }
+  quill.on('text-change', (delta, oldDelta, source)=>{
+    if(source!=='user') return;
+    const inserted=(delta.ops||[]).some(op=> typeof op.insert==='string' && (op.insert.includes(' ')||op.insert.includes('\n')));
+    if(!inserted) return;
+    const range=quill.getSelection(); if(!range) return;
+    const start=Math.max(0, range.index-200);
+    const text=quill.getText(start, range.index-start);
+    let m,lastHref=null; while((m=urlRegex.exec(text))!==null) lastHref={url:m[0], idx:m.index};
+    if(!lastHref) return;
+    const emb=toVideoEmbed(lastHref.url); if(!emb) return;
+    const absStart=start+lastHref.idx;
+    quill.deleteText(absStart, lastHref.url.length, Quill.sources.USER);
+    quill.insertEmbed(absStart, 'video', emb, Quill.sources.USER);
+    quill.setSelection(absStart+1, Quill.sources.SILENT);
+  });
+
+  // Сайдбар JDoodle и сплиттер
+  function jdoodleUrl(lang){
+    switch(lang){
+      case 'python': return 'https://www.jdoodle.com/python3-programming-online';
+      case 'java': return 'https://www.jdoodle.com/online-java-compiler';
+      case 'c': return 'https://www.jdoodle.com/c-online-compiler';
+      case 'cpp': return 'https://www.jdoodle.com/online-compiler-c%2B%2B';
+      case 'csharp': return 'https://www.jdoodle.com/compile-c-sharp-online';
+      default: return null;
+    }
+  }
+  const codeEnabled = document.getElementById('code_panel_enabled');
+  const codeLang = document.getElementById('code_language');
+  const grid = document.getElementById('editor-grid');
+  const splitter = document.getElementById('grid-splitter');
+  const runnerIframe = document.getElementById('runner-iframe');
+  const runnerOpen = document.getElementById('runner-open');
+
+  const runnerKey = 'lesson:{{ lesson.id }}:runnerW';
+  let runnerW = parseInt(localStorage.getItem(runnerKey) || '520', 10);
+
+  function applyRunnerUI(){
+    const enabled = codeEnabled && codeEnabled.checked;
+    const lang = codeLang ? codeLang.value : '';
+    if (enabled && lang){
+      const url = jdoodleUrl(lang);
+      grid.classList.add('two');
+      grid.style.setProperty('--runner-w', runnerW + 'px');
+      runnerIframe.src = url || 'about:blank';
+      runnerOpen.href = url || '#';
+    } else {
+      grid.classList.remove('two');
+      runnerIframe.src = 'about:blank';
+      runnerOpen.href = '#';
+    }
+  }
+  codeEnabled?.addEventListener('change', applyRunnerUI);
+  codeLang?.addEventListener('change', applyRunnerUI);
+  applyRunnerUI();
+
+  // Сплиттер: по умолчанию «вправо — уже, влево — шире» (как в текущей логике).
+  // Если хотите «вправо — шире», замените (sW - dx) на (sW + dx).
+  let dragging=false, sX=0, sW=runnerW;
+  splitter?.addEventListener('pointerdown',(e)=>{ dragging=true; sX=e.clientX; sW=runnerW; splitter.setPointerCapture(e.pointerId); e.preventDefault(); });
+  window.addEventListener('pointermove',(e)=>{
+    if(!dragging || !grid.classList.contains('two')) return;
+    const dx = e.clientX - sX; // вправо — положительно
+    const gridRect = grid.getBoundingClientRect();
+    const minW=280, maxW=Math.max(320, Math.floor(gridRect.width - 240));
+    runnerW = Math.max(minW, Math.min(maxW, sW - dx));  // текущая "инвертированная" логика
+    grid.style.setProperty('--runner-w', runnerW + 'px');
+  });
+  window.addEventListener('pointerup',()=>{ if(!dragging) return; dragging=false; localStorage.setItem(runnerKey, String(runnerW)); });
+
+  // Сохранение
+  function submitForm(closeAfter=false){
+    const html = editorRoot.innerHTML;
+    document.getElementById('html_content').value = html;
+    if (closeAfter) {
+      const input = document.createElement('input'); input.type='hidden'; input.name='close'; input.value='1';
+      document.getElementById('lesson-form').appendChild(input);
+    }
+    document.getElementById('lesson-form').submit();
+  }
+  document.getElementById('btn-save').addEventListener('click', ()=>submitForm(false));
+  document.getElementById('btn-save-close').addEventListener('click', ()=>submitForm(true));
+</script>
+{% endblock %}

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Урок — {{ lesson.title }}{% endblock %}
+
+{% block styles %}
+<style>
+  .container-narrow { max-width: 2000px; margin: 0 auto; padding: 0 16px; }
+
+  .view-head {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    margin:16px 0;
+  }
+  .view-title { margin:0; font-size:28px; color:#000; line-height:1.25; }
+  .btn { display:inline-block; padding:10px 16px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; cursor:pointer; text-align:center; }
+  .btn.secondary { background:#fff; color:#000; }
+
+  /* Двухпанельная сетка: контент + компилятор */
+  .view-card { background:#fff; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.06); padding:12px; }
+  .view-grid {
+    --runner-w: 520px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .view-grid.two { grid-template-columns: 1fr 6px var(--runner-w); }
+
+  .splitter {
+    width: 6px;
+    cursor: col-resize;
+    background: linear-gradient(90deg, transparent, #eee, transparent);
+    border-radius: 4px;
+    align-self: stretch;
+    height: auto;
+    min-height: 240px;
+  }
+
+  .runner-col {
+    position: sticky; top: 8px;
+    height: calc(100vh - 180px);
+    overflow: auto; /* прокрутка панели */
+    display: none;
+  }
+  .view-grid.two .runner-col { display: block; }
+  .runner-col iframe {
+    width: 100%; height: 100%;
+    border: 1px solid #ccc; border-radius: 8px; background:#fff;
+    min-width: 900px;  /* горизонтальная прокрутка при узком контейнере */
+    min-height: 600px; /* вертикальная прокрутка при узком контейнере */
+  }
+
+  /* Quill read-only */
+  #viewer.ql-container.ql-snow { border: none; }
+  #viewer .ql-editor { min-height: 240px; background:#fff; }
+  #viewer .ql-editor img { max-width: 100%; height: auto; }
+  #viewer .ql-editor iframe.ql-video:not([style*="width"]) {
+    width: 100%; height: auto; aspect-ratio: 16/9;
+  }
+
+  /* Mobile hardening */
+  * { min-width:0; }
+  html, body { overflow-x:hidden; }
+  img { max-width:100%; height:auto; display:block; }
+
+  @media (max-width: 992px) {
+    .view-head { flex-direction:column; align-items:flex-start; }
+    .btn.secondary { width:100%; }
+  }
+  @media (max-width: 900px) {
+    .view-grid { grid-template-columns: 1fr !important; }
+    .splitter { display:none; }
+    .runner-col { position:relative; top:auto; height: 50vh; }
+  }
+  @media (max-width: 360px) {
+    .view-title { font-size:22px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+
+  <div class="view-head">
+    <h2 class="view-title">{{ lesson.title }}</h2>
+    <a class="btn secondary" href="{{ url_for('course_learn', course_id=course_id) }}">← Вернуться к курсу</a>
+  </div>
+
+  <div class="view-card">
+    <div id="view-grid" class="view-grid">
+
+      <div id="viewer"></div>
+
+      {% if lesson.code_panel_enabled and lesson.code_language %}
+        <div class="splitter" id="view-splitter" aria-label="Перетяните, чтобы изменить ширину панели"></div>
+        <aside class="runner-col" id="runner-col">
+          <div style="margin:0 0 8px;">
+            <a id="runner-open" class="btn secondary" href="#" target="_blank" rel="noopener">Открыть компилятор</a>
+          </div>
+          <iframe id="runner-iframe" src="about:blank" title="Online Compiler"></iframe>
+        </aside>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<script>
+  // Данные урока
+  const initialHtml = {{ (lesson.html_content or '')|tojson|safe }};
+
+  // Инициализируем Quill в режиме только чтения
+  const viewer = new Quill('#viewer', {
+    theme: 'snow',
+    readOnly: true,
+    modules: { toolbar: false }
+  });
+  viewer.clipboard.dangerouslyPasteHTML(initialHtml || '');
+
+  // Подстраховка: YouTube/RuTube ссылки → встроенные плееры (если остались «голые»)
+  function toVideoEmbed(url) {
+    if (!url) return null;
+    try {
+      const u = new URL(url.trim());
+      const host = (u.hostname || '').toLowerCase();
+
+      if (host.includes('youtube.com') || host.includes('youtu.be')) {
+        if (u.hostname.includes('youtube.com') && u.pathname.startsWith('/embed/')) return u.toString();
+        if (host.includes('youtube.com')) {
+          if (u.pathname.startsWith('/shorts/')) {
+            const id = u.pathname.split('/')[2] || '';
+            if (id) return `https://www.youtube.com/embed/${id}`;
+          }
+          const v = u.searchParams.get('v');
+          if (v) return `https://www.youtube.com/embed/${v}`;
+        }
+        if (host.includes('youtu.be')) {
+          const id = u.pathname.replace(/^\/+/, '').split('/')[0];
+          if (id) return `https://www.youtube.com/embed/${id}`;
+        }
+      }
+
+      if (host.includes('rutube.ru')) {
+        if (u.pathname.includes('/play/embed/')) return u.toString();
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2 && parts[0] === 'video') return `https://rutube.ru/play/embed/${parts[1]}`;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function convertAnchorsToEmbeds(root) {
+    const anchors = Array.from(root.querySelectorAll('a[href]'));
+    anchors.forEach(a => {
+      const emb = toVideoEmbed(a.href);
+      if (emb) {
+        const iframe = document.createElement('iframe');
+        iframe.className = 'ql-video';
+        iframe.src = emb;
+        iframe.setAttribute('frameborder','0');
+        iframe.setAttribute('allowfullscreen','');
+        a.replaceWith(iframe);
+      }
+    });
+  }
+  convertAnchorsToEmbeds(viewer.root);
+
+  // Панель компилятора (если включена)
+  function jdoodleUrl(lang){
+    switch(lang){
+      case 'python': return 'https://www.jdoodle.com/python3-programming-online';
+      case 'java': return 'https://www.jdoodle.com/online-java-compiler';
+      case 'c': return 'https://www.jdoodle.com/c-online-compiler';
+      case 'cpp': return 'https://www.jdoodle.com/online-compiler-c%2B%2B';
+      case 'csharp': return 'https://www.jdoodle.com/compile-c-sharp-online';
+      default: return null;
+    }
+  }
+
+  {% if lesson.code_panel_enabled and lesson.code_language %}
+    const grid = document.getElementById('view-grid');
+    const splitter = document.getElementById('view-splitter');
+    const runnerIframe = document.getElementById('runner-iframe');
+    const runnerOpen = document.getElementById('runner-open');
+
+    const lang = {{ (lesson.code_language or '')|tojson|safe }};
+    const key = 'lesson:{{ lesson.id }}:runnerW';
+    let runnerW = parseInt(localStorage.getItem(key) || '520', 10);
+    const url = jdoodleUrl(lang);
+
+    grid.classList.add('two');
+    grid.style.setProperty('--runner-w', runnerW + 'px');
+    runnerIframe.src = url || 'about:blank';
+    runnerOpen.href = url || '#';
+
+    // Сплиттер: текущая логика — «вправо уже, влево шире»
+    let dragging=false, sX=0, sW=runnerW;
+    splitter?.addEventListener('pointerdown',(e)=>{ dragging=true; sX=e.clientX; sW=runnerW; splitter.setPointerCapture(e.pointerId); e.preventDefault(); });
+    window.addEventListener('pointermove',(e)=>{
+      if(!dragging || !grid.classList.contains('two')) return;
+      const dx = e.clientX - sX; // вправо — положительно
+      const gridRect = grid.getBoundingClientRect();
+      const minW=280, maxW=Math.max(320, Math.floor(gridRect.width - 240));
+      runnerW = Math.max(minW, Math.min(maxW, sW - dx));  // инвертированная логика — как просили
+      grid.style.setProperty('--runner-w', runnerW + 'px');
+    });
+    window.addEventListener('pointerup',()=>{ if(!dragging) return; dragging=false; localStorage.setItem(key, String(runnerW)); });
+  {% endif %}
+</script>
+{% endblock %}

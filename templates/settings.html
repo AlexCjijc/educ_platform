@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Настройки профиля{% endblock %}
+
+{% block styles %}
+<style>
+  .settings-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+  .settings-head h2 { margin:0; font-size:28px; color:#000; }
+
+  /* Сетка: 2 колонки → 1 колонка на мобильных */
+  .settings-grid {
+    display:grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width: 992px){ .settings-grid { grid-template-columns: 1fr; } }
+
+  .form-card {
+    background:#fff; border-radius:12px;
+    box-shadow:0 4px 12px rgba(0,0,0,.06);
+    padding:16px;
+  }
+
+  .form-title { margin:0 0 10px; font-size:20px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .form-label { font-weight:700; color:#000; }
+  .form-help { font-size:12px; color:#777; }
+
+  .form-input, .form-textarea, .form-file, .form-password, .form-email {
+    width:100%; box-sizing:border-box;
+    padding:10px 12px; border:1px solid #ccc; border-radius:8px;
+    font-size:14px; background:#fff; color:#333;
+  }
+  .form-textarea { min-height:120px; resize:vertical; }
+
+  /* Кнопки */
+  .btn-primary { display:inline-block; padding:10px 16px; background:#000; color:#fff; border:1px solid #000; border-radius:8px; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn-secondary { display:inline-block; padding:10px 16px; background:#fff; color:#000; border:1px solid #000; border-radius:8px; cursor:pointer; text-decoration:none; text-align:center; }
+  .btn-file { display:inline-flex; align-items:center; gap:8px; cursor:pointer; border:1px dashed #999; padding:8px 12px; border-radius:8px; background:#fff; }
+
+  /* Аватар */
+  .avatar-wrap { display:flex; gap:12px; align-items:center; }
+  .avatar-preview { width:92px; height:92px; border-radius:50%; object-fit:cover; border:1px solid #eee; background:#f4f4f4; }
+  .avatar-tools { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+
+  /* Карточка-инфо */
+  .info-box { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .info-avatar { width:52px; height:52px; border-radius:50%; object-fit:cover; border:1px solid #eee; background:#f4f4f4; }
+  .muted { color:#666; }
+  .small { font-size:90%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="settings-head">
+    <h2>Настройки профиля</h2>
+  </div>
+
+
+  <div class="form-card" style="margin-bottom:12px;">
+    <div class="info-box">
+      {% if u.avatar_path %}
+        <img src="{{ url_for('static', filename=u.avatar_path) }}" class="info-avatar" alt="{{ u.name }}">
+      {% else %}
+        <img src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" class="info-avatar" alt="{{ u.name }}">
+      {% endif %}
+      <div>
+        <div><b>{{ u.name }}</b></div>
+        <div class="small muted">ID: #{{ u.id }}</div>
+        <div class="small muted">Email: {{ u.email }}</div>
+      </div>
+    </div>
+    <div class="small muted">Измените имя, e‑mail (если свободен), описание и аватар слева. Смена пароля справа.</div>
+  </div>
+
+  <div class="settings-grid">
+
+
+    <section class="form-card">
+      <h3 class="form-title">Профиль</h3>
+      <form method="post" enctype="multipart/form-data" id="profile-form">
+        <input type="hidden" name="action" value="update_profile"/>
+
+        <div class="form-group">
+          <label class="form-label" for="name">Имя</label>
+          <input id="name" name="name" class="form-input" value="{{ u.name }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input id="email" name="email" type="email" class="form-email" value="{{ u.email }}" required>
+          <div class="form-help">Email будет виден только вам на странице профиля.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="bio">О себе</label>
+          <textarea id="bio" name="bio" class="form-textarea" placeholder="Расскажите о себе...">{{ u.bio or '' }}</textarea>
+          <div class="form-help"><span id="bio-count">0</span>/2000</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Аватар</label>
+          <div class="avatar-wrap">
+            {% if u.avatar_path %}
+              <img id="avatar-preview" class="avatar-preview" src="{{ url_for('static', filename=u.avatar_path) }}" alt="avatar">
+            {% else %}
+              <img id="avatar-preview" class="avatar-preview" src="{{ url_for('static', filename='images/avatar-placeholder.png') }}" alt="avatar">
+            {% endif %}
+            <div class="avatar-tools">
+              <label class="btn-file">
+                <input id="avatar" name="avatar" type="file" accept="image/*" style="display:none;">
+                Выбрать файл
+              </label>
+              {% if u.avatar_path %}
+                <label class="small" style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" name="remove_avatar"> Удалить текущий аватар
+                </label>
+              {% endif %}
+              <button type="button" class="btn-secondary" id="btn-reset-avatar">Сбросить</button>
+              <div class="form-help" id="avatar-file-name" style="width:100%;"></div>
+            </div>
+          </div>
+          <div class="form-help">Поддерживаются: png, jpg, jpeg, webp, gif</div>
+        </div>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn-primary" type="submit">Сохранить изменения</button>
+          <a href="{{ url_for('profile', user_id=u.id) }}" class="btn-secondary">Вернуться в профиль</a>
+        </div>
+      </form>
+    </section>
+
+
+    <section class="form-card">
+      <h3 class="form-title">Смена пароля</h3>
+      <form method="post" id="password-form">
+        <input type="hidden" name="action" value="update_password"/>
+        <div class="form-group">
+          <label class="form-label" for="current_password">Текущий пароль</label>
+          <input id="current_password" name="current_password" type="password" class="form-password" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="new_password">Новый пароль</label>
+          <input id="new_password" name="new_password" type="password" minlength="6" class="form-password" required>
+          <div class="form-help">Минимум 6 символов</div>
+        </div>
+        <div>
+          <button class="btn-primary">Обновить пароль</button>
+        </div>
+      </form>
+    </section>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Счётчик «О себе»
+  (function() {
+    const ta = document.getElementById('bio');
+    const cnt = document.getElementById('bio-count');
+    const MAX = 2000;
+    function upd() {
+      const val = ta.value || '';
+      if (val.length > MAX) ta.value = val.slice(0, MAX);
+      cnt.textContent = ta.value.length;
+    }
+    ta.addEventListener('input', upd);
+    upd();
+  })();
+
+  // Предпросмотр аватара + сброс
+  (function(){
+    const input = document.getElementById('avatar');
+    const preview = document.getElementById('avatar-preview');
+    const fileName = document.getElementById('avatar-file-name');
+    const resetBtn = document.getElementById('btn-reset-avatar');
+    const placeholder = "{{ url_for('static', filename='images/avatar-placeholder.png') }}";
+
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      if (!f) { fileName.textContent=''; return; }
+      const url = URL.createObjectURL(f);
+      preview.src = url;
+      fileName.textContent = `${f.name} (${Math.round(f.size/1024)} КБ)`;
+    });
+
+    resetBtn.addEventListener('click', () => {
+      input.value = '';
+      fileName.textContent = '';
+      // если ранее был аватар пользователя — не меняем его на placeholder здесь,
+      // реальный сброс происходит через чекбокс «Удалить текущий аватар» + сохранение
+      // но если текущего аватара нет — вернём placeholder
+      {% if not u.avatar_path %}
+        preview.src = placeholder;
+      {% endif %}
+    });
+  })();
+
+  // Защита от двойной отправки
+  (function(){
+    let sending = false;
+    const forms = [document.getElementById('profile-form'), document.getElementById('password-form')];
+    forms.forEach(form => {
+      form.addEventListener('submit', () => {
+        if (sending) return false;
+        sending = true;
+        const btn = form.querySelector('button[type="submit"], .btn-primary');
+        if (btn) { btn.disabled = true; btn.textContent = 'Сохраняем...'; }
+      });
+    });
+  })();
+</script>
+{% endblock %}

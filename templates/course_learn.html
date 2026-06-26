@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}Прохождение: {{ course.title }}{% endblock %}
+
+{% block styles %}
+<style>
+  .container-narrow { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  .learn-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:16px 0; }
+  .learn-head h2 { margin:0; font-size:28px; color:#000; }
+  .muted { color:#666; }
+  .small { font-size:90%; }
+
+  /* Карточки глав и подглав */
+  .chapter { border:1px solid #eee; border-radius:12px; background:#fff; overflow:hidden; margin:10px 0; box-shadow:0 4px 12px rgba(0,0,0,.04); }
+  .chapter > summary {
+    list-style:none; cursor:pointer; padding:12px 14px; font-weight:700;
+    display:flex; align-items:center; justify-content:space-between; background:#fafafa; border-bottom:1px solid #eee;
+  }
+  .chapter > summary::-webkit-details-marker { display:none; }
+  .chapter-body { padding:10px 14px 14px; }
+
+  .section { border:1px dashed #e6e6e6; border-radius:10px; margin:10px 0; background:#fcfcfc; }
+  .section > summary {
+    list-style:none; cursor:pointer; padding:10px 12px; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .section > summary::-webkit-details-marker { display:none; }
+  .section-body { padding:8px 12px 12px; }
+
+  .pill { font-size:85%; padding:2px 8px; border:1px solid #ddd; border-radius:999px; background:#f6f6f6; color:#555; }
+
+  /* Список элементов */
+  .units { list-style:none; margin:8px 0 10px; padding:8px; border:1px solid #eee; border-radius:10px; background:#fafafa; }
+  .unit {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+    background:#fff; border:1px solid #e6e6e6; border-radius:10px; padding:10px 12px; margin:8px 0;
+  }
+  .meta { display:flex; align-items:center; gap:10px; min-width:0; }
+  .meta-title { word-wrap:break-word; overflow-wrap:anywhere; }
+
+  .tools { display:flex; flex-direction:column; gap:8px; min-width:220px; }
+  textarea[name="text_answer"] { width:100%; min-height:100px; padding:10px; border:1px solid #ccc; border-radius:8px; box-sizing:border-box; }
+
+  .btn { display:inline-block; padding:8px 12px; border-radius:8px; border:1px solid #000; background:#000; color:#fff; text-decoration:none; text-align:center; cursor:pointer; }
+  .btn.secondary, .link-btn { background:#fff; color:#000; }
+  .link-btn { border:1px solid #000; }
+
+  /* Mobile hardening */
+  * { min-width:0; }
+  img { max-width:100%; height:auto; display:block; }
+  html, body { overflow-x:hidden; }
+
+  @media (max-width: 768px) {
+    .tools { min-width:unset; width:100%; }
+    .unit { flex-direction:column; align-items:stretch; }
+  }
+  @media (max-width: 360px) {
+    .learn-head h2 { font-size:22px; }
+    .btn, .link-btn, .tools button { width:100%; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-narrow">
+      <h2>Прохождение: {{ course.title }}</h2>
+  <div class="learn-head">
+
+    <a class="btn secondary" href="{{ url_for('course_chat', course_id=course.id) }}">Чат курса</a>
+  </div>
+
+  {% for ch in course.chapters|sort(attribute='order_idx') %}
+    <details class="chapter" open>
+      <summary>
+        <span>Глава: {{ ch.title }}</span>
+        <span class="small muted">развернуть</span>
+      </summary>
+
+      <div class="chapter-body">
+
+
+        <h4 class="small muted" style="margin:2px 0 6px;">Элементы главы</h4>
+        <ul class="units">
+          {% set list = [] %}
+          {% for l in ch.lessons if l.section_id == None %}{% set _ = list.append({'t':'lesson','id':l.id,'title':l.title,'order':l.order_idx}) %}{% endfor %}
+          {% for t in ch.tests if t.section_id == None %}{% set _ = list.append({'t':'test','id':t.id,'title':t.title,'order':t.order_idx}) %}{% endfor %}
+          {% for a in ch.assignments if a.section_id == None %}{% set _ = list.append({'t':'assignment','id':a.id,'title':a.title,'order':a.order_idx}) %}{% endfor %}
+
+          {% if list|length == 0 %}
+            <li class="small muted">Нет элементов на уровне главы</li>
+          {% else %}
+            {% for u in list|sort(attribute='order') %}
+              <li class="unit">
+                <div class="meta">
+                  <span class="pill">
+                    {% if u.t == 'lesson' %}Урок{% elif u.t == 'test' %}Тест{% else %}Задание{% endif %}
+                  </span>
+                  <span class="meta-title">
+                    {% if u.t == 'lesson' %}
+                      <a href="{{ url_for('lesson_view', lesson_id=u.id) }}">{{ u.title }}</a>
+                    {% elif u.t == 'test' %}
+                      <a href="{{ url_for('test_view', test_id=u.id) }}">{{ u.title }}</a>
+                    {% else %}
+                      {{ u.title }}
+                    {% endif %}
+                  </span>
+                </div>
+
+                <div class="tools">
+                  {% if u.t == 'lesson' %}
+                    <button class="btn secondary js-complete" data-id="{{ u.id }}">Отметить пройденным</button>
+                  {% elif u.t == 'assignment' %}
+                    <form method="post" action="{{ url_for('assignment_submit', assignment_id=u.id) }}">
+                      <textarea name="text_answer" placeholder="Ваш ответ"></textarea>
+                      <div class="row" style="margin-top:6px;">
+                        <button class="btn">Отправить</button>
+                      </div>
+                    </form>
+                  {% endif %}
+                </div>
+              </li>
+            {% endfor %}
+          {% endif %}
+        </ul>
+
+
+        <h4 class="small muted" style="margin:2px 0 6px;">Подглавы</h4>
+        {% if ch.sections|length == 0 %}
+          <p class="small muted">В этой главе нет подглав</p>
+        {% else %}
+          {% for s in ch.sections|sort(attribute='order_idx') %}
+            <details class="section" open>
+              <summary>Подглава: {{ s.title }}</summary>
+              <div class="section-body">
+                <ul class="units">
+                  {% set slist = [] %}
+                  {% for l in s.lessons %}{% set _ = slist.append({'t':'lesson','id':l.id,'title':l.title,'order':l.order_idx}) %}{% endfor %}
+                  {% for t in s.tests %}{% set _ = slist.append({'t':'test','id':t.id,'title':t.title,'order':t.order_idx}) %}{% endfor %}
+                  {% for a in s.assignments %}{% set _ = slist.append({'t':'assignment','id':a.id,'title':a.title,'order':a.order_idx}) %}{% endfor %}
+
+                  {% if slist|length == 0 %}
+                    <li class="small muted">Нет элементов в этой подглаве</li>
+                  {% else %}
+                    {% for u in slist|sort(attribute='order') %}
+                      <li class="unit">
+                        <div class="meta">
+                          <span class="pill">
+                            {% if u.t == 'lesson' %}Урок{% elif u.t == 'test' %}Тест{% else %}Задание{% endif %}
+                          </span>
+                          <span class="meta-title">
+                            {% if u.t == 'lesson' %}
+                              <a href="{{ url_for('lesson_view', lesson_id=u.id) }}">{{ u.title }}</a>
+                            {% elif u.t == 'test' %}
+                              <a href="{{ url_for('test_view', test_id=u.id) }}">{{ u.title }}</a>
+                            {% else %}
+                              {{ u.title }}
+                            {% endif %}
+                          </span>
+                        </div>
+
+                        <div class="tools">
+                          {% if u.t == 'lesson' %}
+                            <button class="btn secondary js-complete" data-id="{{ u.id }}">Отметить пройденным</button>
+                          {% elif u.t == 'assignment' %}
+                            <form method="post" action="{{ url_for('assignment_submit', assignment_id=u.id) }}">
+                              <textarea name="text_answer" placeholder="Ваш ответ"></textarea>
+                              <div class="row" style="margin-top:6px;">
+                                <button class="btn">Отправить</button>
+                              </div>
+                            </form>
+                          {% endif %}
+                        </div>
+                      </li>
+                    {% endfor %}
+                  {% endif %}
+                </ul>
+              </div>
+            </details>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </details>
+  {% endfor %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Если у вас нет обработчика в static/js/main.js, раскомментируйте:
+/*
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.js-complete');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  try {
+    const res = await fetch(`/lesson/${id}/complete`, { method:'POST' });
+    if (res.ok) { btn.textContent = 'Пройдено ✓'; btn.disabled = true; btn.classList.add('disabled'); }
+  } catch(err){}
+});
+*/
+</script>
+{% endblock %}
+

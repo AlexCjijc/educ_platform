@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Главная — Курсы{% endblock %}
+
+{% block styles %}
+
+{% endblock %}
+
+{% block content %}
+
+
+<section class="content-block">
+            <div class="content-left">
+                <div class="">
+                    <h2>Изучайте важные навыки для карьеры и жизни</h2>
+                    <p> Мы поможет вам быстро освоить актуальные навыки и найти хорошую работу в изменчивом рынке труда.</p>
+                    <a href="{{ url_for('catalog') }}" class="btn-more ">Перейти к обчуению</a>
+                </div>
+            </div>
+            <div class="content-right">
+            </div>
+        </section>
+
+<div class="container">
+  <h2>Курсы</h2>
+
+  <nav class="tabs">
+    <ul>
+      <li><a href="#popular" class="active" data-tab="popular">Популярные</a></li>
+      <li><a href="#new" data-tab="new">Новинки</a></li>
+      <li><a href="#recommended" data-tab="recommended">Рекомендуем</a></li>
+    </ul>
+  </nav>
+
+  {% set rec = recommended if recommended is defined else popular %}
+
+
+  <section id="popular" class="course-section active">
+    <div class="course-grid">
+      {% for c in popular %}
+        {% set img = c.image_path if c.image_path else 'images/course-placeholder.PNG' %}
+        <div class="course-card">
+          <img src="{{ url_for('static', filename=img) }}" alt="Изображение курса">
+          <div class="course-details">
+            <div class="course-info-top">
+              <span class="category">{{ c.category or 'Без категории' }}</span>
+              <span class="rating">✫ {{ "%.1f"|format(c.rating or 0.0) }}</span>
+            </div>
+            <h3 class="course-title">{{ c.title }}</h3>
+            <p class="course-description">{{ (c.description or '')[:120] }}{% if c.description and c.description|length > 120 %}...{% endif %}</p>
+            <a class="btn-more" href="{{ url_for('course_detail', course_id=c.id) }}">Перейти</a>
+          </div>
+        </div>
+      {% else %}
+        <p class="small muted">Пока нет курсов</p>
+      {% endfor %}
+    </div>
+  </section>
+
+
+  <section id="new" class="course-section">
+    <div class="course-grid">
+      {% for c in newest %}
+        {% set img = c.image_path if c.image_path else 'images/course-placeholder.jpg' %}
+        <div class="course-card">
+          <img src="{{ url_for('static', filename=img) }}" alt="Изображение курса">
+          <div class="course-details">
+            <div class="course-info-top">
+              <span class="category">{{ c.category or 'Без категории' }}</span>
+              <span class="rating">✫ {{ "%.1f"|format(c.rating or 0.0) }}</span>
+            </div>
+            <h3 class="course-title">{{ c.title }}</h3>
+            <p class="course-description">{{ (c.description or '')[:120] }}{% if c.description and c.description|length > 120 %}...{% endif %}</p>
+            <a class="btn-more" href="{{ url_for('course_detail', course_id=c.id) }}">Перейти</a>
+          </div>
+        </div>
+      {% else %}
+        <p class="small muted">Пока нет новых курсов</p>
+      {% endfor %}
+    </div>
+  </section>
+
+
+  <section id="recommended" class="course-section">
+    <div class="course-grid">
+      {% for c in rec %}
+        {% set img = c.image_path if c.image_path else 'images/course-placeholder.jpg' %}
+        <div class="course-card">
+          <img src="{{ url_for('static', filename=img) }}" alt="Изображение курса">
+          <div class="course-details">
+            <div class="course-info-top">
+              <span class="category">{{ c.category or 'Без категории' }}</span>
+              <span class="rating">✫  {{ "%.1f"|format(c.rating or 0.0) }}</span>
+            </div>
+            <h3 class="course-title">{{ c.title }}</h3>
+            <p class="course-description">{{ (c.description or '')[:120] }}{% if c.description and c.description|length > 120 %}...{% endif %}</p>
+            <a class="btn-more" href="{{ url_for('course_detail', course_id=c.id) }}">Перейти</a>
+          </div>
+        </div>
+      {% else %}
+        <p class="small muted">Пока нет рекомендаций</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <div style="text-align:center; margin:16px 0;">
+    <a class="btn-more btn-more-big" href="{{ url_for('catalog') }}">Больше курсов</a>
+  </div>
+</div>
+
+
+<div class="categories container">
+            <h2>Категорий</h2>
+            <div class="card-row">
+                <div class="card large">
+                        <div class="card-content">
+                            <span class="category-type">Языки программирования</span>
+                            <h2>Программирование</h2>
+                            <img src="/static/images/program.png" alt="Иконка программирования" class="card-icon">
+                        </div>
+                    </div>
+                    <div class="card small">
+                        <div class="card-content">
+                            <span class="category-type">Дизайн - UX</span>
+                            <h2>Дизайн</h2>
+                            <img src="/static/images/ux.png" alt="Иконка дизайна" class="card-icon">
+                        </div>
+                    </div>
+                    <div class="card small">
+                        <div class="card-content">
+                            <span class="category-type">Медицина - здровье</span>
+                            <h2>Психология</h2>
+                            <img src="/static/images/health.png" alt="Иконка Медицина" class="card-icon">
+                        </div>
+                    </div>
+                </div>
+
+            <div class="card-row">
+                <div class="card small">
+                    <div class="card-content">
+                        <span class="category-type">Пастель - краски</span>
+                        <h2>Рисование</h2>
+                        <img src="/static/images/draw.png" alt="Рисование" class="card-icon">
+                    </div>
+                </div>
+                <div class="card small">
+                    <div class="card-content">
+                        <span class="category-type">Бизнес</span>
+                        <h2>Бизнес</h2>
+                        <img src="/static/images/bus.png" alt="Иконка Бизнес" class="card-icon">
+                    </div>
+                </div>
+                                <div class="card large">
+                    <div class="card-content">
+                        <span class="category-type">Фотосъемка</span>
+                        <h2>Фотография</h2>
+                        <img src="/static/images/camera.jpg" alt="Иконка фотографии" class="card-icon">
+                    </div>
+                </div>
+            </div>
+        <a class="btn-more btn-more-big" href="{{ url_for('catalog') }}">Все категорий</a>
+        </div>
+    </div>
+
+
+<div class="popular-authors-slider container" style="margin-top:24px;">
+  <h2>Популярные авторы</h2>
+  <div class="slider-container">
+    <div class="cards-peoples" id="authors-strip">
+      {% for a in authors %}
+        {% set avatar = a.avatar_path if a.avatar_path else 'images/avatar-placeholder.png' %}
+        {% set bio_text = (a.bio or 'Автор пока не добавил описание') %}
+        <div class="card-people">
+          <div class="card-person-header">
+            <img src="{{ url_for('static', filename=avatar) }}" alt="Аватар автора" class="card-person-avatar">
+            <h3 class="card-person-name">{{ a.name }}</h3>
+          </div>
+          <div class="card-person-details">
+            <p class="card-person-rating">✫ {{ "%.1f"|format(a.rating or 0.0) }}</p>
+
+
+            <p class="card-person-bio clamp-3"
+               title="{{ bio_text|e }}">
+              {{ bio_text|e|replace('\n', ' ')|truncate(160, True, '…') }}
+            </p>
+
+            <p class="card-person-description small muted" style="margin-top:6px;">
+              <a class="btn-more" href="{{ url_for('profile', user_id=a.id) }}">Перейти в профиль</a>
+            </p>
+          </div>
+        </div>
+      {% else %}
+        <p class="small muted">Пока нет авторов</p>
+      {% endfor %}
+    </div>
+  </div>
+  <button class="slider-arrow left" aria-label="Предыдущая" id="authors-left">❮</button>
+  <button class="slider-arrow right" aria-label="Следующая" id="authors-right">❯</button>
+</div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+{% endblock %}
